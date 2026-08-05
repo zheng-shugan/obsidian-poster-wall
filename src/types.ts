@@ -37,3 +37,8 @@ export interface PosterItem {
 }
 
 export type SortMode = "modified" | "name";
+
+export interface AvailableTag {
+	tag: string;
+	noteCount: number;
+}

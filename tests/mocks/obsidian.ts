@@ -183,6 +183,58 @@ export class TextComponent {
 	}
 }
 
+export interface MockInputSuggest<T> {
+	getMockSuggestions(query: string): T[] | Promise<T[]>;
+	selectSuggestion(value: T, event: MouseEvent | KeyboardEvent): void;
+}
+
+let latestInputSuggest: MockInputSuggest<unknown> | null = null;
+
+export function getLatestInputSuggest<T>(): MockInputSuggest<T> | null {
+	return latestInputSuggest as MockInputSuggest<T> | null;
+}
+
+export abstract class AbstractInputSuggest<T> {
+	limit = 100;
+	private readonly callbacks: Array<(value: T, event: MouseEvent | KeyboardEvent) => unknown> = [];
+
+	constructor(
+		_app: unknown,
+		private readonly inputEl: HTMLInputElement | HTMLDivElement,
+	) {
+		latestInputSuggest = this as unknown as MockInputSuggest<unknown>;
+	}
+
+	setValue(value: string): void {
+		if (this.inputEl instanceof HTMLInputElement) this.inputEl.value = value;
+		else this.inputEl.textContent = value;
+	}
+
+	getValue(): string {
+		return this.inputEl instanceof HTMLInputElement ? this.inputEl.value : (this.inputEl.textContent ?? "");
+	}
+
+	protected abstract getSuggestions(query: string): T[] | Promise<T[]>;
+
+	getMockSuggestions(query: string): T[] | Promise<T[]> {
+		return this.getSuggestions(query);
+	}
+
+	onSelect(callback: (value: T, event: MouseEvent | KeyboardEvent) => unknown): this {
+		this.callbacks.push(callback);
+		return this;
+	}
+
+	selectSuggestion(value: T, event: MouseEvent | KeyboardEvent): void {
+		for (const callback of this.callbacks) callback(value, event);
+		this.close();
+	}
+
+	close(): void {}
+
+	abstract renderSuggestion(value: T, el: HTMLElement): void;
+}
+
 class ExtraButtonComponent extends ButtonComponent {
 	setIcon(value: string): this {
 		setIcon(this.buttonEl, value);

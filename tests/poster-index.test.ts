@@ -51,10 +51,66 @@ describe("PosterIndex 事件同步", () => {
 
 		await index.start();
 		expect(index.getItems().map((item) => item.path)).toEqual([file.path]);
+		expect(index.getAvailableTags("读书")).toEqual([]);
+		settings.tags = [];
+		expect(index.getAvailableTags("#读书")).toEqual([{ tag: "#读书", noteCount: 1 }]);
+		settings.tags = ["#读书"];
 		cache = { allTags: ["#电影"] } as CachedMetadata;
 		metadataEvents.trigger("changed", file, "", cache);
 		await vi.advanceTimersByTimeAsync(150);
 		expect(index.getItems()).toEqual([]);
+		expect(index.getAvailableTags("读书")).toEqual([]);
+		expect(index.getAvailableTags("电影")).toEqual([{ tag: "#电影", noteCount: 1 }]);
+	});
+
+	it("构建全 Vault 标签目录，推导父标签并按唯一笔记计数", async () => {
+		const read = makeFile("Books/Read.md");
+		const wishlist = makeFile("Books/Wishlist.md");
+		const film = makeFile("Films/Movie.md");
+		const cacheByPath = new Map<string, CachedMetadata>([
+			[read.path, { allTags: ["#读书", "#读书/已读"] } as CachedMetadata],
+			[wishlist.path, { allTags: ["#读书/想读"] } as CachedMetadata],
+			[film.path, { allTags: ["#电影"] } as CachedMetadata],
+		]);
+		const vaultEvents = new Events();
+		const metadataEvents = new Events();
+		const app = {
+			vault: {
+				configDir: ".obsidian",
+				getMarkdownFiles: () => [read, wishlist, film],
+				getFileByPath: () => null,
+				getResourcePath: () => "",
+				on: vaultEvents.on.bind(vaultEvents),
+			},
+			metadataCache: {
+				getFileCache: (file: { path: string }) => cacheByPath.get(file.path) ?? null,
+				getFirstLinkpathDest: () => null,
+				on: metadataEvents.on.bind(metadataEvents),
+			},
+		} as unknown as App;
+		const store = {
+			settings: { tags: ["#读书"], coverProperty: "cover", coverFolder: "PosterWall/Covers" },
+			getNoteCover: () => undefined,
+			deletePath: vi.fn(async () => false),
+			renamePath: vi.fn(async () => false),
+		} as unknown as PosterWallDataStore;
+		const index = new PosterIndex({ app, registerEvent: vi.fn() } as unknown as Plugin, store);
+
+		await index.start();
+
+		expect(index.getAvailableTags("读书")).toEqual([
+			{ tag: "#读书/想读", noteCount: 1 },
+			{ tag: "#读书/已读", noteCount: 1 },
+		]);
+		expect(index.getAvailableTags("电影")).toEqual([{ tag: "#电影", noteCount: 1 }]);
+
+		const mutableStore = store as unknown as { settings: PosterWallSettings };
+		mutableStore.settings.tags = [];
+		expect(index.getAvailableTags("读书")).toEqual([
+			{ tag: "#读书", noteCount: 2 },
+			{ tag: "#读书/想读", noteCount: 1 },
+			{ tag: "#读书/已读", noteCount: 1 },
+		]);
 	});
 
 	it("文件夹重命名和删除会迁移数据库并重建", async () => {

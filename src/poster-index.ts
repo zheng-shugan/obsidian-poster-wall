@@ -2,13 +2,15 @@ import { getAllTags, TFile, TFolder, type Plugin, type TAbstractFile } from "obs
 import { METADATA_DEBOUNCE_MS } from "./constants";
 import { CoverResolver } from "./cover-resolver";
 import type { PosterWallDataStore } from "./data-store";
-import type { PosterItem, PosterWallSettings } from "./types";
-import { normalizeTags, noteMatchesConfiguredTags } from "./utils";
+import type { AvailableTag, PosterItem, PosterWallSettings } from "./types";
+import { normalizeSearchText, normalizeTags, noteMatchesConfiguredTags } from "./utils";
 
 type ChangeListener = () => void;
 
 export class PosterIndex {
 	private readonly items = new Map<string, PosterItem>();
+	private readonly tagsByFile = new Map<string, Map<string, string>>();
+	private readonly tagCatalog = new Map<string, AvailableTag>();
 	private readonly listeners = new Set<ChangeListener>();
 	private readonly debounceTimers = new Map<string, number>();
 	private readonly resolver: CoverResolver;
@@ -29,6 +31,22 @@ export class PosterIndex {
 		return [...this.items.values()];
 	}
 
+	getAvailableTags(query: string): AvailableTag[] {
+		const normalizedQuery = normalizeSearchText(query.trim().replace(/^#/u, ""));
+		const configuredTags = new Set(this.store.settings.tags.map((tag) => normalizeSearchText(tag)));
+		return [...this.tagCatalog.entries()]
+			.filter(([key]) => !configuredTags.has(key))
+			.map(([, suggestion]) => suggestion)
+			.filter((suggestion) => normalizeSearchText(suggestion.tag.slice(1)).includes(normalizedQuery))
+			.sort((left, right) => {
+				const countComparison = right.noteCount - left.noteCount;
+				return countComparison !== 0
+					? countComparison
+					: left.tag.localeCompare(right.tag, "zh-CN", { sensitivity: "base" });
+			})
+			.slice(0, 50);
+	}
+
 	subscribe(listener: ChangeListener): () => void {
 		this.listeners.add(listener);
 		return () => this.listeners.delete(listener);
@@ -43,11 +61,11 @@ export class PosterIndex {
 
 	async rebuild(): Promise<void> {
 		this.items.clear();
+		this.tagsByFile.clear();
+		this.tagCatalog.clear();
 		const settings = this.store.settings;
-		if (settings.tags.length > 0) {
-			for (const file of this.plugin.app.vault.getMarkdownFiles()) {
-				this.indexFile(file, settings);
-			}
+		for (const file of this.plugin.app.vault.getMarkdownFiles()) {
+			this.indexFile(file, settings);
 		}
 		this.emitChange();
 	}
@@ -107,6 +125,7 @@ export class PosterIndex {
 	private indexFile(file: TFile, settings: PosterWallSettings): void {
 		const cache = this.plugin.app.metadataCache.getFileCache(file);
 		const tags = cache === null ? [] : normalizeTags(getAllTags(cache) ?? []);
+		this.replaceFileTags(file.path, tags);
 		if (settings.tags.length === 0 || !noteMatchesConfiguredTags(tags, settings.tags)) {
 			this.items.delete(file.path);
 			return;
@@ -131,6 +150,7 @@ export class PosterIndex {
 
 	private async handleDelete(file: TAbstractFile): Promise<void> {
 		const includeChildren = file instanceof TFolder;
+		this.removeFileTags(file.path, includeChildren);
 		await this.store.deletePath(file.path, includeChildren);
 		await this.rebuild();
 	}
@@ -142,5 +162,44 @@ export class PosterIndex {
 
 	private emitChange(): void {
 		for (const listener of this.listeners) listener();
+	}
+
+	private replaceFileTags(path: string, tags: readonly string[]): void {
+		this.removeFileTags(path, false);
+		const expandedTags = this.expandTagHierarchy(tags);
+		this.tagsByFile.set(path, expandedTags);
+		for (const [key, tag] of expandedTags) {
+			const existing = this.tagCatalog.get(key);
+			if (existing === undefined) {
+				this.tagCatalog.set(key, { tag, noteCount: 1 });
+			} else {
+				existing.noteCount += 1;
+			}
+		}
+	}
+
+	private removeFileTags(path: string, includeChildren: boolean): void {
+		for (const [filePath, tags] of this.tagsByFile) {
+			if (filePath !== path && (!includeChildren || !filePath.startsWith(`${path}/`))) continue;
+			for (const key of tags.keys()) {
+				const existing = this.tagCatalog.get(key);
+				if (existing === undefined) continue;
+				if (existing.noteCount <= 1) this.tagCatalog.delete(key);
+				else existing.noteCount -= 1;
+			}
+			this.tagsByFile.delete(filePath);
+		}
+	}
+
+	private expandTagHierarchy(tags: readonly string[]): Map<string, string> {
+		const expanded = new Map<string, string>();
+		for (const tag of tags) {
+			const segments = tag.slice(1).split("/");
+			for (let index = 1; index <= segments.length; index += 1) {
+				const hierarchyTag = `#${segments.slice(0, index).join("/")}`;
+				expanded.set(normalizeSearchText(hierarchyTag), hierarchyTag);
+			}
+		}
+		return expanded;
 	}
 }

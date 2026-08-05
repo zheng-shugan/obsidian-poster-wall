@@ -1,13 +1,44 @@
-import { Notice, PluginSettingTab, Setting, type App, type TextComponent } from "obsidian";
+import { AbstractInputSuggest, Notice, PluginSettingTab, Setting, type App, type TextComponent } from "obsidian";
 import type PosterWallPlugin from "./main";
+import type { AvailableTag } from "./types";
 import { normalizeTag, validateCoverFolder } from "./utils";
 
+class VaultTagSuggest extends AbstractInputSuggest<AvailableTag> {
+	constructor(
+		app: App,
+		inputEl: HTMLInputElement,
+		private readonly getTags: (query: string) => AvailableTag[],
+		private readonly onTagSelected: (tag: AvailableTag) => void,
+	) {
+		super(app, inputEl);
+		this.limit = 50;
+		this.onSelect((tag) => this.onTagSelected(tag));
+	}
+
+	protected getSuggestions(query: string): AvailableTag[] {
+		return this.getTags(query);
+	}
+
+	renderSuggestion(tag: AvailableTag, el: HTMLElement): void {
+		el.addClass("poster-wall-tag-suggestion");
+		el.createSpan({ text: tag.tag });
+		el.createSpan({
+			cls: "poster-wall-tag-suggestion-count",
+			text: `${tag.noteCount} 篇`,
+		});
+	}
+}
+
 export class PosterWallSettingTab extends PluginSettingTab {
+	private tagSuggest: VaultTagSuggest | null = null;
+
 	constructor(app: App, private readonly plugin: PosterWallPlugin) {
 		super(app, plugin);
 	}
 
 	override display(): void {
+		this.tagSuggest?.close();
+		this.tagSuggest = null;
 		const { containerEl } = this;
 		containerEl.empty();
 		containerEl.addClass("poster-wall-settings");
@@ -34,6 +65,12 @@ export class PosterWallSettingTab extends PluginSettingTab {
 				text.setPlaceholder("#读书").onChange((value) => {
 					tagDraft = value;
 				});
+				this.tagSuggest = new VaultTagSuggest(
+					this.app,
+					text.inputEl,
+					(query) => this.plugin.index.getAvailableTags(query),
+					(tag) => void this.addTag(tag.tag),
+				);
 				text.inputEl.addEventListener("keydown", (event) => {
 					if (event.key !== "Enter") return;
 					event.preventDefault();
