@@ -71,8 +71,9 @@ describe("PosterWallDataStore", () => {
 		expect(store.getNoteRating("A.md")).toBe(3);
 		expect(store.getNoteRating("Invalid.md")).toBeUndefined();
 
-		await store.setNoteRating("A.md", 5);
-		expect(store.getNoteRating("A.md")).toBe(5);
+		await store.setNoteRating("A.md", 2.5);
+		expect(store.getNoteRating("A.md")).toBe(2.5);
+		expect((snapshots[0] as { notes: Record<string, { rating?: number }> }).notes["A.md"]?.rating).toBe(2.5);
 		await store.setNoteRating("A.md", null);
 		expect(store.getNoteRating("A.md")).toBeUndefined();
 		expect(store.getNoteCover("A.md")).toBe("cover.png");

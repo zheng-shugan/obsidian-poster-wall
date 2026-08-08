@@ -217,14 +217,33 @@ export class PosterWallView extends ItemView {
 		const renderStars = (value: number): void => {
 			for (const [index, star] of stars.entries()) {
 				const starValue = index + 1;
-				star.setText(starValue <= value ? "★" : "☆");
-				star.classList.toggle("is-filled", starValue <= value);
+				const isFilled = value >= starValue;
+				const isHalf = !isFilled && value >= starValue - 0.5;
+				star.setText(isFilled || isHalf ? "★" : "☆");
+				star.classList.toggle("is-filled", isFilled);
+				star.classList.toggle("is-half", isHalf);
 				star.setAttr(
 					"aria-label",
-					starValue === item.rating ? `清除评分（当前 ${starValue} 星）` : `评分 ${starValue} 星`,
+					starValue === item.rating
+						? `清除评分（当前 ${starValue} 星）；左半区为 ${starValue - 0.5} 星，使用方向键调整半星`
+						: `评分 ${starValue} 星；左半区为 ${starValue - 0.5} 星，使用方向键调整半星`,
 				);
 			}
 			rating.setAttr("aria-label", value === 0 ? "未评分" : `评分：${value} 星`);
+		};
+		const setRating = (nextRating: number | null, toggleSame = false): void => {
+			const normalizedRating = nextRating === null ? null : Math.round(nextRating * 2) / 2;
+			const resolvedRating =
+				toggleSame && normalizedRating !== null && item.rating === normalizedRating ? null : normalizedRating;
+			item.rating = resolvedRating ?? undefined;
+			renderStars(resolvedRating ?? 0);
+			void this.plugin.index.setNoteRating(item.path, resolvedRating);
+		};
+		const ratingFromPointer = (star: HTMLButtonElement, starValue: number, event: MouseEvent): number => {
+			const rect = star.getBoundingClientRect();
+			if (rect.width <= 0) return starValue;
+			const fraction = (event.clientX - rect.left) / rect.width;
+			return starValue - (fraction < 0.5 ? 0.5 : 0);
 		};
 
 		for (let value = 1; value <= 5; value += 1) {
@@ -233,24 +252,40 @@ export class PosterWallView extends ItemView {
 				text: value <= (item.rating ?? 0) ? "★" : "☆",
 				attr: {
 					type: "button",
-					"aria-label": value === item.rating ? `清除评分（当前 ${value} 星）` : `评分 ${value} 星`,
-					title: value === item.rating ? "清除评分" : `评分 ${value} 星`,
+					"aria-label": `评分 ${value} 星；左半区为 ${value - 0.5} 星，使用方向键调整半星`,
+					title: `左半区 ${value - 0.5} 星，右半区 ${value} 星`,
 				},
 			});
 			stars.push(star);
-			star.addEventListener("mouseenter", () => renderStars(value));
+			star.addEventListener("mousemove", (event) => renderStars(ratingFromPointer(star, value, event)));
 			star.addEventListener("focus", () => renderStars(value));
 			star.addEventListener("keydown", (event) => {
-				if (event.key !== "Enter" && event.key !== " ") return;
-				event.preventDefault();
-				star.click();
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
+					star.click();
+					return;
+				}
+				if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+					event.preventDefault();
+					const base = item.rating ?? value;
+					const delta = event.key === "ArrowRight" ? 0.5 : -0.5;
+					setRating(Math.min(5, Math.max(0.5, base + delta)));
+					return;
+				}
+				if (event.key === "Home") {
+					event.preventDefault();
+					setRating(null);
+					return;
+				}
+				if (event.key === "End") {
+					event.preventDefault();
+					setRating(5);
+				}
 			});
 			star.addEventListener("click", (event) => {
 				event.stopPropagation();
-				const nextRating = item.rating === value ? null : value;
-				item.rating = nextRating ?? undefined;
-				renderStars(nextRating ?? 0);
-				void this.plugin.index.setNoteRating(item.path, nextRating);
+				const selectedRating = event.detail === 0 ? value : ratingFromPointer(star, value, event);
+				setRating(selectedRating, true);
 			});
 		}
 

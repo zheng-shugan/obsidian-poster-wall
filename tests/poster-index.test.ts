@@ -14,7 +14,7 @@ describe("PosterIndex 事件同步", () => {
 		const vaultEvents = new Events();
 		const metadataEvents = new Events();
 		let cache = { allTags: ["#读书"] } as CachedMetadata;
-		let noteRating: number | undefined = 4;
+		let noteRating: number | undefined = 2.5;
 		const app = {
 			vault: {
 				configDir: ".obsidian",
@@ -56,9 +56,9 @@ describe("PosterIndex 事件同步", () => {
 
 		await index.start();
 		expect(index.getItems().map((item) => item.path)).toEqual([file.path]);
-		expect(index.getItems()[0]?.rating).toBe(4);
-		await index.setNoteRating(file.path, 5);
-		expect(index.getItems()[0]?.rating).toBe(5);
+		expect(index.getItems()[0]?.rating).toBe(2.5);
+		await index.setNoteRating(file.path, 4.5);
+		expect(index.getItems()[0]?.rating).toBe(4.5);
 		await index.setNoteRating(file.path, null);
 		expect(index.getItems()[0]?.rating).toBeUndefined();
 		expect(index.getAvailableTags("读书")).toEqual([]);

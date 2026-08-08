@@ -33,16 +33,21 @@ describe("数据兼容", () => {
 		expect(data.notes).toEqual({ "Books/A.md": { cover: "Covers/a.webp" } });
 	});
 
-	it("只接受 1–5 的整数评分，0 表示未评分", () => {
+	it("接受 0.5 步进的 0.5–5 评分，0 表示未评分", () => {
 		expect(normalizeRating(4)).toBe(4);
+		expect(normalizeRating(0.5)).toBe(0.5);
+		expect(normalizeRating(1.5)).toBe(1.5);
+		expect(normalizeRating(5)).toBe(5);
 		expect(normalizeRating(0)).toBeUndefined();
-		expect(normalizeRating(2.5)).toBeUndefined();
+		expect(normalizeRating(0.25)).toBeUndefined();
+		expect(normalizeRating(2.25)).toBeUndefined();
+		expect(normalizeRating(5.5)).toBeUndefined();
 		expect(
 			sanitizeData(
-				{ notes: { good: { rating: 5 }, zero: { rating: 0 }, bad: { rating: 6 } } },
+				{ notes: { good: { rating: 5 }, half: { rating: 2.5 }, zero: { rating: 0 }, bad: { rating: 6 } } },
 				".obsidian",
 			).notes,
-		).toEqual({ good: { rating: 5 }, zero: {}, bad: {} });
+		).toEqual({ good: { rating: 5 }, half: { rating: 2.5 }, zero: {}, bad: {} });
 	});
 
 	it("拒绝配置目录、绝对目录与向上路径", () => {

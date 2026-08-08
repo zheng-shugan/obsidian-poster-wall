@@ -101,10 +101,29 @@ describe("PosterWallView", () => {
 		expect(stars.slice(0, 4).every((star) => star.classList.contains("is-filled"))).toBe(true);
 		expect(stars[4]?.classList.contains("is-filled")).toBe(false);
 		expect(stars.map((star) => star.textContent)).toEqual(["★", "★", "★", "★", "☆"]);
-		stars[4]?.click();
-		expect(setNoteRating).toHaveBeenCalledWith(file.path, 5);
+		expect(stars[2]?.getAttribute("aria-label")).toContain("左半区为 2.5 星");
+		const thirdStar = stars[2];
+		if (thirdStar === undefined) throw new Error("第三颗星不存在");
+		vi.spyOn(thirdStar, "getBoundingClientRect").mockReturnValue({ left: 0, width: 100 } as DOMRect);
+		thirdStar.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: 25 }));
+		expect(thirdStar.classList.contains("is-half")).toBe(true);
+		view.contentEl.querySelector<HTMLElement>(".poster-wall-rating")?.dispatchEvent(new MouseEvent("mouseleave"));
+		expect(thirdStar.classList.contains("is-half")).toBe(false);
+
+		thirdStar.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 25, detail: 1 }));
+		expect(setNoteRating).toHaveBeenLastCalledWith(file.path, 2.5);
+		thirdStar.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 75, detail: 1 }));
+		expect(setNoteRating).toHaveBeenLastCalledWith(file.path, 3);
 		expect(openLinkText).not.toHaveBeenCalled();
 
+		thirdStar.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+		expect(setNoteRating).toHaveBeenLastCalledWith(file.path, 3.5);
+		thirdStar.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+		expect(setNoteRating).toHaveBeenLastCalledWith(file.path, 3);
+		thirdStar.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+		expect(setNoteRating).toHaveBeenLastCalledWith(file.path, null);
+		thirdStar.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true }));
+		expect(setNoteRating).toHaveBeenLastCalledWith(file.path, 5);
 		stars[4]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 		expect(setNoteRating).toHaveBeenLastCalledWith(file.path, null);
 		expect(openLinkText).not.toHaveBeenCalled();

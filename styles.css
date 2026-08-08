@@ -224,6 +224,14 @@
 	color: var(--text-warning);
 }
 
+.poster-wall-rating-star.is-half {
+	color: transparent;
+	background-image: linear-gradient(90deg, var(--text-warning) 50%, var(--text-muted) 50%) !important;
+	background-clip: text !important;
+	-webkit-background-clip: text !important;
+	-webkit-text-fill-color: transparent;
+}
+
 .poster-wall-rating-star:focus-visible {
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: 1px;

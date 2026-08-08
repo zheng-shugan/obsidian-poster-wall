@@ -43,7 +43,9 @@ export function normalizeTags(values: readonly unknown[]): string[] {
 }
 
 export function normalizeRating(value: unknown): number | undefined {
-	return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 5 ? value : undefined;
+	return typeof value === "number" && Number.isFinite(value) && value >= 0.5 && value <= 5 && Number.isInteger(value * 2)
+		? value
+		: undefined;
 }
 
 export function tagMatches(configuredTag: string, noteTag: string): boolean {
