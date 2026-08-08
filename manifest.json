@@ -1,7 +1,7 @@
 {
 	"id": "poster-wall",
 	"name": "Poster Wall",
-	"version": "1.0.0",
+	"version": "0.1.0",
 	"minAppVersion": "1.12.7",
 	"description": "Browse tagged Markdown notes as a local-first poster wall.",
 	"author": "Poster Wall contributors",
