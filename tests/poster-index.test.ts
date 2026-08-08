@@ -14,11 +14,12 @@ describe("PosterIndex 事件同步", () => {
 		const vaultEvents = new Events();
 		const metadataEvents = new Events();
 		let cache = { allTags: ["#读书"] } as CachedMetadata;
+		let noteRating: number | undefined = 4;
 		const app = {
 			vault: {
 				configDir: ".obsidian",
 				getMarkdownFiles: () => [file],
-				getFileByPath: () => null,
+				getFileByPath: () => file,
 				getResourcePath: () => "",
 				on: vaultEvents.on.bind(vaultEvents),
 			},
@@ -38,10 +39,14 @@ describe("PosterIndex 事件同步", () => {
 				return { ...settings, tags: [...settings.tags] };
 			},
 			getNoteCover: () => undefined,
+			getNoteRating: () => noteRating,
 			deletePath: vi.fn(async () => false),
 			renamePath: vi.fn(async () => false),
 			replaceSettings: vi.fn(async () => undefined),
 			setNoteCover: vi.fn(async () => undefined),
+			setNoteRating: vi.fn(async (_path: string, rating: number | null) => {
+				noteRating = rating ?? undefined;
+			}),
 		} as unknown as PosterWallDataStore;
 		const plugin = {
 			app,
@@ -51,6 +56,11 @@ describe("PosterIndex 事件同步", () => {
 
 		await index.start();
 		expect(index.getItems().map((item) => item.path)).toEqual([file.path]);
+		expect(index.getItems()[0]?.rating).toBe(4);
+		await index.setNoteRating(file.path, 5);
+		expect(index.getItems()[0]?.rating).toBe(5);
+		await index.setNoteRating(file.path, null);
+		expect(index.getItems()[0]?.rating).toBeUndefined();
 		expect(index.getAvailableTags("读书")).toEqual([]);
 		settings.tags = [];
 		expect(index.getAvailableTags("#读书")).toEqual([{ tag: "#读书", noteCount: 1 }]);
@@ -91,6 +101,7 @@ describe("PosterIndex 事件同步", () => {
 		const store = {
 			settings: { tags: ["#读书"], coverProperty: "cover", coverFolder: "PosterWall/Covers" },
 			getNoteCover: () => undefined,
+			getNoteRating: () => undefined,
 			deletePath: vi.fn(async () => false),
 			renamePath: vi.fn(async () => false),
 		} as unknown as PosterWallDataStore;

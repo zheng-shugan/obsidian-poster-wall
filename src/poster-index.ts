@@ -84,6 +84,15 @@ export class PosterIndex {
 		}
 	}
 
+	async setNoteRating(path: string, rating: number | null): Promise<void> {
+		await this.store.setNoteRating(path, rating);
+		const file = this.plugin.app.vault.getFileByPath(path);
+		if (file !== null && file.extension === "md") {
+			this.indexFile(file, this.store.settings);
+			this.emitChange();
+		}
+	}
+
 	dispose(): void {
 		for (const timer of this.debounceTimers.values()) window.clearTimeout(timer);
 		this.debounceTimers.clear();
@@ -145,6 +154,7 @@ export class PosterIndex {
 			mtime: file.stat.mtime,
 			covers: covers.candidates,
 			propertyManaged: covers.propertyManaged,
+			rating: this.store.getNoteRating(file.path),
 		});
 	}
 

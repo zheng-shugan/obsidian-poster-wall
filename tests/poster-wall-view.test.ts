@@ -26,6 +26,7 @@ function makeHarness(items: PosterItem[], settings?: Partial<PosterWallSettings>
 			getItems: () => items,
 			subscribe: () => () => undefined,
 			setNoteCover: vi.fn(async () => undefined),
+			setNoteRating: vi.fn(async () => undefined),
 		},
 		openSettings,
 	} as unknown as PosterWallPlugin;
@@ -43,6 +44,7 @@ describe("PosterWallView", () => {
 			tags: ["#读书"],
 			mtime: 10,
 			propertyManaged: false,
+			rating: 4,
 			covers: [
 				{ kind: "remote", source: "database", value: "https://one.test/a", url: "https://one.test/a" },
 				{ kind: "remote", source: "body", value: "https://two.test/a", url: "https://two.test/a" },
@@ -61,6 +63,52 @@ describe("PosterWallView", () => {
 		firstImage?.dispatchEvent(new Event("error"));
 		const secondImage = view.contentEl.querySelector<HTMLImageElement>(".poster-wall-image");
 		expect(secondImage?.src).toContain("two.test/a");
+	});
+
+	it("评分按钮支持点击、清除和键盘操作，且不会打开笔记", async () => {
+		const file = makeFile("Books/A.md");
+		const item: PosterItem = {
+			file,
+			path: file.path,
+			title: file.basename,
+			tags: ["#读书"],
+			mtime: 0,
+			propertyManaged: false,
+			covers: [],
+			rating: 4,
+		};
+		const setNoteRating = vi.fn(async () => undefined);
+		const openLinkText = vi.fn(async () => undefined);
+		const app = { workspace: { openLinkText } } as unknown as App;
+		const leaf = new WorkspaceLeaf();
+		Object.assign(leaf, { app });
+		const plugin = {
+			app,
+			index: {
+				settings: { tags: ["#读书"], coverProperty: "cover", coverFolder: "PosterWall/Covers" },
+				getItems: () => [item],
+				subscribe: () => () => undefined,
+				setNoteCover: vi.fn(async () => undefined),
+				setNoteRating,
+			},
+		} as unknown as PosterWallPlugin;
+		const view = new PosterWallView(leaf, plugin);
+		await view.onOpen();
+
+		const stars = [...view.contentEl.querySelectorAll<HTMLButtonElement>(".poster-wall-rating-star")];
+		expect(stars.map((star) => star.textContent)).toEqual(["★", "★", "★", "★", "☆"]);
+		stars[4]?.click();
+		expect(setNoteRating).toHaveBeenCalledWith(file.path, 5);
+		expect(openLinkText).not.toHaveBeenCalled();
+
+		stars[4]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+		expect(setNoteRating).toHaveBeenLastCalledWith(file.path, null);
+		expect(openLinkText).not.toHaveBeenCalled();
+
+		view.contentEl.querySelector<HTMLElement>(".poster-wall-card")?.dispatchEvent(
+			new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+		);
+		expect(openLinkText).toHaveBeenCalledWith(file.path, "", false);
 	});
 
 	it("Property 管理的卡片禁用封面操作", async () => {

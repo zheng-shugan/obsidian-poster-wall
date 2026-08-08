@@ -1,5 +1,5 @@
 import { normalizePath } from "obsidian";
-import type { PosterItem, PosterWallData, PosterWallSettings, SortMode } from "./types";
+import type { NoteData, PosterItem, PosterWallData, PosterWallSettings, SortMode } from "./types";
 import { DATA_SCHEMA_VERSION, DEFAULT_SETTINGS } from "./constants";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -42,6 +42,10 @@ export function normalizeTags(values: readonly unknown[]): string[] {
 	return result;
 }
 
+export function normalizeRating(value: unknown): number | undefined {
+	return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 5 ? value : undefined;
+}
+
 export function tagMatches(configuredTag: string, noteTag: string): boolean {
 	const configured = normalizeSearchText(configuredTag);
 	const note = normalizeSearchText(noteTag);
@@ -76,12 +80,16 @@ export function sanitizeData(raw: unknown, configDir: string): PosterWallData {
 		typeof rawSettings.coverFolder === "string" ? rawSettings.coverFolder : DEFAULT_SETTINGS.coverFolder;
 	const coverFolder = validateCoverFolder(requestedFolder, configDir) ?? DEFAULT_SETTINGS.coverFolder;
 
-	const notes: Record<string, { cover?: string }> = {};
+	const notes: Record<string, NoteData> = {};
 	if (isRecord(root.notes)) {
 		for (const [path, value] of Object.entries(root.notes)) {
 			if (!isRecord(value)) continue;
 			const cover = typeof value.cover === "string" ? value.cover.trim() : "";
-			notes[path] = cover.length > 0 ? { cover } : {};
+			const rating = normalizeRating(value.rating);
+			notes[path] = {
+				...(cover.length > 0 ? { cover } : {}),
+				...(rating === undefined ? {} : { rating }),
+			};
 		}
 	}
 

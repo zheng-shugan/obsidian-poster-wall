@@ -4,6 +4,7 @@ import {
 	filterAndSortItems,
 	normalizeTag,
 	normalizeTags,
+	normalizeRating,
 	noteMatchesConfiguredTags,
 	sanitizeData,
 	validateCoverFolder,
@@ -30,6 +31,18 @@ describe("数据兼容", () => {
 		expect(data.schemaVersion).toBe(1);
 		expect(data.settings).toEqual({ tags: [], coverProperty: "cover", coverFolder: "PosterWall/Covers" });
 		expect(data.notes).toEqual({ "Books/A.md": { cover: "Covers/a.webp" } });
+	});
+
+	it("只接受 1–5 的整数评分，0 表示未评分", () => {
+		expect(normalizeRating(4)).toBe(4);
+		expect(normalizeRating(0)).toBeUndefined();
+		expect(normalizeRating(2.5)).toBeUndefined();
+		expect(
+			sanitizeData(
+				{ notes: { good: { rating: 5 }, zero: { rating: 0 }, bad: { rating: 6 } } },
+				".obsidian",
+			).notes,
+		).toEqual({ good: { rating: 5 }, zero: {}, bad: {} });
 	});
 
 	it("拒绝配置目录、绝对目录与向上路径", () => {

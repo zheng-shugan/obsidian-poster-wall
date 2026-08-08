@@ -9,6 +9,7 @@ Poster Wall 是一个 Local First 的 Obsidian 插件。它把包含指定标签
 - 按一个或多个标签展示笔记，父标签自动包含层级子标签。
 - 按标题或 Vault 路径搜索，支持最近修改和名称排序。
 - 点击海报打开原始笔记，`Command` 点击在新标签页打开。
+- 在卡片上直接设置或清除 0–5 星评分；评分保存在插件数据库中。
 - 封面优先级：Property → 插件数据库 → 正文第一张 Markdown 图片 → 占位图。
 - 支持 Vault 图片、`[[wikilink]]`、HTTPS 图片和从 Finder 导入图片。
 - 监听笔记、附件与文件夹的创建、删除和重命名；编辑标签、Property 或正文图片后自动刷新。
@@ -31,7 +32,7 @@ Poster Wall 是一个 Local First 的 Obsidian 插件。它把包含指定标签
 
 ## 数据与隐私
 
-插件通过 Obsidian 的 `loadData()`/`saveData()` 将自身设置保存在插件目录的 `data.json` 中。它不建立内容数据库，不写入 Markdown，也不包含遥测、广告、账号系统或在线元数据搜索。
+插件通过 Obsidian 的 `loadData()`/`saveData()` 将自身设置、封面覆盖和评分保存在插件目录的 `data.json` 中。它不建立内容数据库，不写入 Markdown，也不包含遥测、广告、账号系统或在线元数据搜索。
 
 如果笔记或插件数据库引用 HTTPS 封面，Obsidian 会直接连接该图片所属服务器以显示图片，因此服务器可能看到你的 IP 地址和常规网络请求信息。插件不会预先探测、下载或代理这些图片，并设置 `no-referrer`。本地导入只会读取用户在系统文件选择器中明确选择的图片。
 

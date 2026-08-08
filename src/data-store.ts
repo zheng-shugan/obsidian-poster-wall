@@ -1,6 +1,6 @@
 import type { Plugin } from "obsidian";
 import type { PosterWallData, PosterWallSettings } from "./types";
-import { cloneSettings, sanitizeData } from "./utils";
+import { cloneSettings, normalizeRating, sanitizeData } from "./utils";
 
 function pathIsWithin(candidate: string, path: string, includeChildren: boolean): boolean {
 	return candidate === path || (includeChildren && candidate.startsWith(`${path}/`));
@@ -40,17 +40,29 @@ export class PosterWallDataStore {
 		return this.data.notes[path]?.cover;
 	}
 
+	getNoteRating(path: string): number | undefined {
+		return this.data.notes[path]?.rating;
+	}
+
 	async replaceSettings(settings: PosterWallSettings): Promise<void> {
 		this.data.settings = cloneSettings(settings);
 		await this.queueSave();
 	}
 
 	async setNoteCover(path: string, cover: string | null): Promise<void> {
-		if (cover === null || cover.trim().length === 0) {
-			delete this.data.notes[path];
-		} else {
-			this.data.notes[path] = { cover: cover.trim() };
-		}
+		const noteData = { ...this.data.notes[path] };
+		if (cover === null || cover.trim().length === 0) delete noteData.cover;
+		else noteData.cover = cover.trim();
+		this.replaceNoteData(path, noteData);
+		await this.queueSave();
+	}
+
+	async setNoteRating(path: string, rating: number | null): Promise<void> {
+		const noteData = { ...this.data.notes[path] };
+		const normalizedRating = normalizeRating(rating);
+		if (normalizedRating === undefined) delete noteData.rating;
+		else noteData.rating = normalizedRating;
+		this.replaceNoteData(path, noteData);
 		await this.queueSave();
 	}
 
@@ -65,7 +77,10 @@ export class PosterWallDataStore {
 					? replacePathPrefix(noteData.cover, oldPath, newPath, includeChildren)
 					: noteData.cover;
 			if (nextNotePath !== notePath || nextCover !== noteData.cover) changed = true;
-			nextNotes[nextNotePath] = nextCover === undefined ? {} : { cover: nextCover };
+			nextNotes[nextNotePath] = {
+				...(nextCover === undefined ? {} : { cover: nextCover }),
+				...(noteData.rating === undefined ? {} : { rating: noteData.rating }),
+			};
 		}
 
 		if (changed) {
@@ -88,6 +103,7 @@ export class PosterWallDataStore {
 			const cover = noteData.cover;
 			if (cover !== undefined && !isRemoteCover(cover) && pathIsWithin(cover, path, includeChildren)) {
 				changed = true;
+				if (noteData.rating !== undefined) nextNotes[notePath] = { rating: noteData.rating };
 				continue;
 			}
 			nextNotes[notePath] = { ...noteData };
@@ -112,5 +128,10 @@ export class PosterWallDataStore {
 				await this.plugin.saveData(snapshot);
 			});
 		return this.saveQueue;
+	}
+
+	private replaceNoteData(path: string, noteData: PosterWallData["notes"][string]): void {
+		if (noteData.cover === undefined && noteData.rating === undefined) delete this.data.notes[path];
+		else this.data.notes[path] = noteData;
 	}
 }

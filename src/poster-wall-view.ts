@@ -153,6 +153,7 @@ export class PosterWallView extends ItemView {
 		});
 		card.addEventListener("keydown", (event) => {
 			if (event.key !== "Enter" && event.key !== " ") return;
+			if (event.target instanceof HTMLElement && event.target.closest(".poster-wall-rating") !== null) return;
 			event.preventDefault();
 			void this.openNote(item, false);
 		});
@@ -200,6 +201,66 @@ export class PosterWallView extends ItemView {
 		}
 
 		card.createDiv({ cls: "poster-wall-title", text: item.title, attr: { title: item.path } });
+		this.renderRating(card, item);
+	}
+
+	private renderRating(card: HTMLElement, item: PosterItem): void {
+		const rating = card.createDiv({
+			cls: "poster-wall-rating",
+			attr: {
+				role: "group",
+				"aria-label": item.rating === undefined ? "未评分" : `评分：${item.rating} 星`,
+			},
+		});
+		const stars: HTMLButtonElement[] = [];
+
+		const renderStars = (value: number): void => {
+			for (const [index, star] of stars.entries()) {
+				const starValue = index + 1;
+				star.setText(starValue <= value ? "★" : "☆");
+				star.classList.toggle("is-filled", starValue <= value);
+				star.setAttr(
+					"aria-label",
+					starValue === item.rating ? `清除评分（当前 ${starValue} 星）` : `评分 ${starValue} 星`,
+				);
+			}
+			rating.setAttr("aria-label", value === 0 ? "未评分" : `评分：${value} 星`);
+		};
+
+		for (let value = 1; value <= 5; value += 1) {
+			const star = rating.createEl("button", {
+				cls: "poster-wall-rating-star",
+				text: value <= (item.rating ?? 0) ? "★" : "☆",
+				attr: {
+					type: "button",
+					"aria-label": value === item.rating ? `清除评分（当前 ${value} 星）` : `评分 ${value} 星`,
+					title: value === item.rating ? "清除评分" : `评分 ${value} 星`,
+				},
+			});
+			stars.push(star);
+			star.addEventListener("mouseenter", () => renderStars(value));
+			star.addEventListener("focus", () => renderStars(value));
+			star.addEventListener("keydown", (event) => {
+				if (event.key !== "Enter" && event.key !== " ") return;
+				event.preventDefault();
+				star.click();
+			});
+			star.addEventListener("click", (event) => {
+				event.stopPropagation();
+				const nextRating = item.rating === value ? null : value;
+				item.rating = nextRating ?? undefined;
+				renderStars(nextRating ?? 0);
+				void this.plugin.index.setNoteRating(item.path, nextRating);
+			});
+		}
+
+		rating.addEventListener("mouseleave", () => renderStars(item.rating ?? 0));
+		rating.addEventListener("focusout", (event) => {
+			if (!(event.relatedTarget instanceof Node) || !rating.contains(event.relatedTarget)) {
+				renderStars(item.rating ?? 0);
+			}
+		});
+		renderStars(item.rating ?? 0);
 	}
 
 	private renderCover(container: HTMLElement, item: PosterItem): void {

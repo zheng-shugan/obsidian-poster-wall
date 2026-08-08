@@ -8,6 +8,7 @@ export interface PosterWallSettings {
 
 export interface NoteData {
 	cover?: string;
+	rating?: number;
 }
 
 export interface PosterWallData {
@@ -34,6 +35,7 @@ export interface PosterItem {
 	mtime: number;
 	covers: CoverCandidate[];
 	propertyManaged: boolean;
+	rating?: number;
 }
 
 export type SortMode = "modified" | "name";
