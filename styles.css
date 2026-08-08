@@ -187,26 +187,37 @@
 
 .poster-wall-rating {
 	display: flex;
+	align-items: center;
 	justify-content: center;
-	gap: var(--size-2-1);
+	gap: 0;
+	min-height: 1.5em;
 	padding-top: var(--size-2-2);
 }
 
 .poster-wall-rating-star {
-	padding: 0 var(--size-2-1);
-	color: var(--text-faint);
+	appearance: none;
+	-webkit-appearance: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.25em;
+	height: 1.5em;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	color: var(--text-muted);
 	font-size: var(--font-ui-small);
-	line-height: 1.2;
-	background: transparent;
-	border: 0;
-	border-radius: var(--radius-s);
+	line-height: 1;
+	background: transparent !important;
+	border: 0 !important;
+	border-radius: 0;
+	box-shadow: none !important;
 	cursor: pointer;
 }
 
-.poster-wall-rating-star:hover,
-.poster-wall-rating-star:focus-visible {
+.poster-wall-rating-star:hover {
 	color: var(--text-warning);
-	background: var(--background-modifier-hover);
 }
 
 .poster-wall-rating-star.is-filled {

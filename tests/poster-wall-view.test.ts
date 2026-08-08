@@ -96,6 +96,10 @@ describe("PosterWallView", () => {
 		await view.onOpen();
 
 		const stars = [...view.contentEl.querySelectorAll<HTMLButtonElement>(".poster-wall-rating-star")];
+		expect(stars).toHaveLength(5);
+		expect(stars.every((star) => !star.classList.contains("clickable-icon"))).toBe(true);
+		expect(stars.slice(0, 4).every((star) => star.classList.contains("is-filled"))).toBe(true);
+		expect(stars[4]?.classList.contains("is-filled")).toBe(false);
 		expect(stars.map((star) => star.textContent)).toEqual(["★", "★", "★", "★", "☆"]);
 		stars[4]?.click();
 		expect(setNoteRating).toHaveBeenCalledWith(file.path, 5);
