@@ -1,6 +1,6 @@
 {
 	"name": "poster-wall",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "A local-first poster wall for tagged Obsidian notes.",
 	"main": "main.js",
 	"type": "module",
