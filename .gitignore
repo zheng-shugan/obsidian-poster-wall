@@ -1,4 +1,5 @@
 node_modules/
+# Generated production bundle. Build it locally/CI and attach it to the GitHub Release.
 main.js
 *.map
 coverage/

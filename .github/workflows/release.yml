@@ -23,9 +23,25 @@ jobs:
         run: npm ci
       - name: Verify and build
         run: npm run check
-      - name: Verify tag matches manifest
-        run: test "$GITHUB_REF_NAME" = "$(node -p "require('./manifest.json').version")"
-      - name: Create GitHub release
+      - name: Verify tag and release assets
+        run: |
+          test "$GITHUB_REF_NAME" = "$(node -p "require('./manifest.json').version")"
+          test -s main.js
+          test -s manifest.json
+          test -s styles.css
+      - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --generate-notes --verify-tag
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists; refreshing its assets."
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --generate-notes \
+              --verify-tag
+          fi
+          gh release upload "$GITHUB_REF_NAME" \
+            main.js manifest.json styles.css \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber

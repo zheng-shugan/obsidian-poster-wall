@@ -53,6 +53,25 @@ npm run check
 
 生产构建生成根目录下的 `main.js`。手动安装时，将 `main.js`、`manifest.json` 和 `styles.css` 复制到测试 Vault 的插件目录。不要在主 Vault 中开发或验证插件。
 
+### 发布新版本
+
+`main.js` 是构建产物，因此不提交到源码仓库；推送与 `manifest.json` 版本号一致的 Git tag 后，GitHub Actions 会构建它，并将 `main.js`、`manifest.json` 和 `styles.css` 作为 Release Assets 上传。
+
+准备新版本时，将 `VERSION` 替换为实际版本号，然后执行：
+
+```bash
+npm version VERSION --no-git-tag-version
+npm run version
+npm run check
+git add package.json package-lock.json manifest.json versions.json
+git commit -m "chore: prepare VERSION release"
+git tag VERSION
+git push origin main
+git push origin VERSION
+```
+
+将 `VERSION` 替换为实际版本号，例如 `1.0.1`。Release 页面中的附件必须直接显示为 `main.js`、`manifest.json` 和 `styles.css`，不能只依赖 GitHub 自动生成的源码压缩包。
+
 正式发布前需要把 `manifest.json` 和 `package.json` 中的作者信息替换为维护者公开身份，并确认 Release 仓库地址。
 
 ## English
